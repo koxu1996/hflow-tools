@@ -44,7 +44,7 @@ processes.forEach(function(proc, idx) {
   wfgraph.setNode("p:"+(idx+1), proc.name);
   procNames[proc.name]="1";
 });
-var procNamesArray = Object.keys(procNames);
+var procNamesArray = Object.keys(procNames).sort((a,b) => a.substring(1).localeCompare(b.substring(1)));
 procNamesArray.forEach((pn, idx) => procNames[pn]=idx); // map name to index
 
 signals.forEach(function(sig, idx) {
@@ -59,7 +59,7 @@ processes.forEach(function(proc, idx) {
   });
 });
 
-let cmap = procNamesArray.length > 10 ? 'rainbow-soft': 'jet';
+let cmap = procNamesArray.length > 10 ? 'hsv': 'jet';
 if (procNamesArray.length < 6) { cmap = 'autumn'; }
 let colors = colormap({
     colormap: cmap,
@@ -72,7 +72,8 @@ let colors = colormap({
 var procg = new Graph();
 
 processes.forEach(function(proc, idx) {
-  procg.setNode("p:"+(idx+1), proc.name);
+  var procName = proc.partition ? proc.name + "[" + proc.partition + "]" : proc.name;
+  procg.setNode("p:"+(idx+1), procName);
 });
 processes.forEach(function(proc, idx) {
   var children = wfgraph.successors("p:"+(idx+1)).flatMap(x => wfgraph.successors(x));
