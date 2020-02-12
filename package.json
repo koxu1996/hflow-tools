@@ -21,9 +21,10 @@
   "dependencies": {
     "@dagrejs/graphlib": "^2.1.4",
     "colormap": "^2.3.1",
+    "docopt": "^0.6.2",
     "graphviz": "0.0.9"
   },
   "bin": {
-    "hflow-dot": "./index.js"
+    "hflow-dot": "./hflow-dot.js"
   }
 }
