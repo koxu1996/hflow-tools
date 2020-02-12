@@ -13,7 +13,11 @@ npm install -g https://github.com/hyperflow-wms/hflow-tools/archive/master.tar.g
 
 ### hflow-dot
 ```
-hflow-dot workflow.json
+hflow-dot [-p] <workflow.json path>
+```
+Options:
+```
+-p    generate a partitioning graph (requires 'partitioning' info in workflow.json)
 ```
 
 To generate an image, use `dot`:
