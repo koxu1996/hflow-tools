@@ -2,7 +2,7 @@
 
 A collection of small useful tools for the HyperFlow workflow engine
 
-- `hflow-dot`: small tool to convert HyperFlow workflow graph to Graphviz dot format. 
+- `hflow-dot`: convert HyperFlow workflow graph to Graphviz dot format. 
 
 ## Installation
 ```
