@@ -1,23 +1,22 @@
 {
-  "name": "hflow-dot",
+  "name": "hflow-tools",
   "version": "1.0.0",
   "description": "Convert Hyperflow workflow graph to Graphviz dot format",
-  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/hypeflow-wms/hflow-dot.git"
+    "url": "https://github.com/hypeflow-wms/hflow-tools.git"
   },
   "keywords": [
     "workflow"
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/hyperflow-wms/hflow-dot/issues"
+    "url": "https://github.com/hyperflow-wms/hflow-tools/issues"
   },
-  "homepage": "https://github.com/hyperflow-wms/hflow-dot#readme",
+  "homepage": "https://github.com/hyperflow-wms/hflow-tools#readme",
   "dependencies": {
     "@dagrejs/graphlib": "^2.1.4",
     "colormap": "^2.3.1",
@@ -25,6 +24,7 @@
     "graphviz": "0.0.9"
   },
   "bin": {
-    "hflow-dot": "./hflow-dot.js"
+    "hflow-dot": "./hflow-dot.js",
+    "hflow-metis": "./hflow-metis.js"
   }
 }
