@@ -46,7 +46,7 @@ var sigToId = function(sig) {
 };
 
 // get a graphlib representation of the workflow process graph
-var procg = hfgraph(file).procGraph;
+var procg = hfgraph(wf).procGraph;
 
 // generate colormap
 var procNames = {}; 
