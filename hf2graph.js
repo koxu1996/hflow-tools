@@ -3,13 +3,10 @@
 // read HyperFlow workflow graph from JSON to a graphlib structure
 // create two graphs: full (processes and signals) and one with only processes
 
-var fs       = require('fs'),
-    Graph = require("@dagrejs/graphlib").Graph;
+var Graph = require("@dagrejs/graphlib").Graph;
  
-var createGraph = function(wfpath) {
-  var fileContents = fs.readFileSync(wfpath);
-  var wf = JSON.parse(fileContents);
-
+var createGraph = function(wfjson) {
+  let wf = wfjson;
   var signals   = (wf.data      || wf.signals);
   var processes = (wf.processes || wf.tasks);
 
