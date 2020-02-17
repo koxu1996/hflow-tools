@@ -13,7 +13,7 @@ Usage:\n\
   \
 Options:\n\
   -h --help   Prints this\n\
-  --ew        Add edge weights (file sizes that need to be transferred)\n\
+  --ew        Add edge weights (not implemented, probably not needed)\n\
   --nw        Add node weights (requested cpu)\n\
   --ns        Add node size (communication volume)\n\
   --lw=<npart>     Add level weights for 'npart' partitions\n\
@@ -31,7 +31,7 @@ var pwgts = opts['--pwgts'];
 if (pwgts) pwgts = pwgts.split(',');
 
 // 'npart': the number of partitions for which to add special graph level weights 
-// these weights looks as follows: 0 0 0 1 0 0, where:
+// these weights look as follows: 0 0 0 1 0 0, where:
 // - the number of weights is the number of levels in the graph
 // - all weights are 0 except one for the level to which the node belongs
 // The purpose of these weights is to ensure balanced partitioning at each
@@ -40,8 +40,8 @@ if (pwgts) pwgts = pwgts.split(',');
 var npart = opts['--lw']; 
 
 // parameters to compute the cost of communication (node size)
-const bandwidth = 100000000; // bytes/s
-const latency = 4;           // seconds
+const bandwidth = 100000000; // bytes/s (for testing)
+const latency = 4;           // seconds (for testing)
 
 var file = opts['<workflow-json-file-path>'];
 
@@ -76,7 +76,7 @@ var getProcSize = function(proc) {
   processes[pIdx].ins.forEach(i => {
     if (signals[i].size) size += Number(signals[i].size);
   });
-  if (size == 0) return 1; // if there no file size info, return 1
+  if (size == 0) return 1; // if there is no file size info, return 1
   //console.error(size);
   return Math.round(size/bandwidth)+latency; 
 }
@@ -93,7 +93,6 @@ var printLevelWeights = function(proc) {
   // To this end, select the smallest part weight and multiply it by the number
   // of processes at this level (phase)
   let minPart = pwgts ? Math.min.apply(null, pwgts.concat(pwgtsToAdd)): 1/npart;
-  console.error(minPart);
   if (levelCounts[phase-1] * minPart >= 1) {
     weights[phase-1] = 1; 
   }
@@ -101,6 +100,7 @@ var printLevelWeights = function(proc) {
 }
 
 // count weights of all partitions (as Metis will) -- required in "printLevelWeights"
+// e.g. if pwgts = "0.3" and npart = 3, this will compute pwgts = "0.3,0.35,0.35"
 var pwgtsToAdd = [];
 if (pwgts) {
   res = Math.round((1.0 - pwgts.reduce((a, b) => Number(a) + Number(b)))*10)/10;
