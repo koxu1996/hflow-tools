@@ -21,6 +21,7 @@
     "@dagrejs/graphlib": "^2.1.4",
     "colormap": "^2.3.1",
     "docopt": "^0.6.2",
+    "fast-json-patch": "^3.0.0-1",
     "graphviz": "0.0.9"
   },
   "bin": {
