@@ -26,4 +26,4 @@ console.log("workflow:", wf.name);
 console.log("processes:", wf.processes.length);
 Object.keys(procNames).forEach(p => (console.log("  " + p + ": " + procNames[p])));
 console.log("signals:", wf.signals.length);
-console.log("levels:", wfinfo.nLevels, "(" + wfinfo.levelCounts + ")");
+console.log("levels:", wfinfo.nLevels, "[" + wfinfo.levelCounts + "]");
