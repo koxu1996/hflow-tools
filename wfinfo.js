@@ -16,24 +16,8 @@ var fs = require('fs'),
 
 var partitioningPerPhase;
 
-var computePartitions = function(parfile) {
-    var partitions = fs.readFileSync(parfile, 'utf8').trim().split("\n");
 
-   var nPartitions = 0;
-    wf.processes.forEach((proc, idx) => {
-        let p = Number(partitions[idx]);
-        if (nPartitions < p) { nPartitions = p; }
-        wf.processes[idx].partition = p+1;
-    });
-    nPartitions += 1;
-
-    partitioningPerPhase = Array(maxPhase).fill(1).map(p => Array(nPartitions).fill(0)); 
-    processes.forEach(p => { 
-        partitioningPerPhase[p.phase-1][p.partition-1]++;
-    });
-}
-
-var main = function(wf, parfile) {
+var main = function(wf, partmap) {
     var signals   = (wf.data      || wf.signals);
     var processes = (wf.processes || wf.tasks);
 
@@ -65,7 +49,22 @@ var main = function(wf, parfile) {
         levelCounts[phases[idx]-1]++;
     });
 
-    if (parfile) computePartitions(parfile);
+    var computePartitions = function(partitions) {
+        var nPartitions = 0;
+        wf.processes.forEach((proc, idx) => {
+            let p = Number(partitions[idx]);
+            if (nPartitions < p) { nPartitions = p; }
+            wf.processes[idx].partition = p+1;
+        });
+        nPartitions += 1;
+
+        partitioningPerPhase = Array(maxPhase).fill(1).map(p => Array(nPartitions).fill(0)); 
+        processes.forEach(p => { 
+            partitioningPerPhase[p.phase-1][p.partition-1]++;
+        });
+    }
+
+    if (partmap) computePartitions(partmap);
 
     return {
         partitioningPerPhase: partitioningPerPhase,
