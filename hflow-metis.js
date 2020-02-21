@@ -8,7 +8,7 @@ var fs       = require('fs'),
 var doc = "\
 hflow-metis: converts HyperFlow workflow.json to Metis graph format\n\
 Usage:\n\
-  hflow-metis [--ew] [--nw] [--ns] [--lw=<npart>] [--pwgts=<pwgts>] <workflow-json-file-path>\n\
+  hflow-metis [--ew] [--nw] [--ns] [--sn] [--lw=<npart>] [--pwgts=<pwgts>] <workflow-json-file-path>\n\
   hflow-metis -h|--help\n\
   \
 Options:\n\
@@ -16,6 +16,7 @@ Options:\n\
   --ew        Add edge weights (not implemented, probably not needed)\n\
   --nw        Add node weights (requested cpu)\n\
   --ns        Add node size (communication volume)\n\
+  --sn        Add special storage node\n\
   --lw=<npart>     Add level weights for 'npart' partitions\n\
   --pwgts=<pwgts>  Partition size weights, e.g. '0.3,0.7'";
 
@@ -29,6 +30,9 @@ var pwgts = opts['--pwgts'];
 // partition weights specify that partitions should be of unequal size
 // '0.3,0.7' means that relative size of partition 1/2 is 0.3/0.7 respectively
 if (pwgts) pwgts = pwgts.split(',');
+
+// Add special storage node to the workflow graph
+var sn = opts['--sn'];
 
 // 'npart': the number of partitions for which to add special graph level weights 
 // these weights look as follows: 0 0 0 1 0 0, where:
@@ -49,10 +53,16 @@ var fileContents = fs.readFileSync(file);
 
 var wf = JSON.parse(fileContents);
 
-var wfinfo = require('./wfinfo.js')(wf);
-
 var signals   = (wf.data      || wf.signals);
 var processes = (wf.processes || wf.tasks);
+
+// Add special storage node at the beginnig of the graph. 
+// It connects workflow inputs to all nodes consuming them.
+if (sn) {
+  processes.unshift({"name": "storage_node", "type": "special", "ins": [], "outs": wf.ins })
+}
+
+var wfinfo = require('./wfinfo.js')(wf);
 
 var sigMap    = {};
 signals.forEach(function(sig, ix) {
@@ -94,7 +104,7 @@ var printLevelWeights = function(proc) {
   // of processes at this level (phase)
   let minPart = pwgts ? Math.min.apply(null, pwgts.concat(pwgtsToAdd)): 1/npart;
   if (levelCounts[phase-1] * minPart >= 1) {
-    weights[phase-1] = 1; 
+    weights[phase-1] = nw ? getProcSize(proc): 1; 
   }
   process.stdout.write(weights.join(' ') + ' ');
 }
@@ -123,13 +133,19 @@ if (pwgts) {
 // get a graphlib representation of the workflow process graph
 var procg = hfgraph(wf).procGraph;
 
+
+/****************************************/
+/****  Generate metis representation  ***/
+/****************************************/
+
 // information about weights (for Metis)
-var fmt = (ns ? "1": "0") + (nw || npart ? "1": "0") + (ew ? "1": "0");
-if (npart) fmt += " " + Number(wfinfo.nLevels + (nw ? 1: 0)); // number of node weigths
+var fmt = (ns ? "1": "0") + ((nw || npart || sn) ? "1": "0") + (ew ? "1": "0");
+if (npart) fmt += " " + Number(wfinfo.nLevels); // number of node weigths
 
 // generate graph file
 console.log(procg.nodeCount(), procg.edgeCount(), fmt);
 procg.nodes().forEach(proc => {
+  let procId = Number(proc.split(':')[1])-1;
   //console.log(procg.successors(proc).forEach(x => console.log(x.split(':')[1])));
   //process.stdout.write(proc + ' ');
   if (ns) {
@@ -138,15 +154,16 @@ procg.nodes().forEach(proc => {
   }
 
   var nodewgt;
-  if (nw) {
+  if ((nw || ns) && !npart) {
     try {
-      nodewgt = processes[proc.split(':')[1]-1].config.executor.cpuRequest*100;
+      nodewgt = processes[procId].config.executor.cpuRequest*100;
       if (!nodewgt) nodewgt = 1;
     } catch(err) {
       console.error("Warning, cpuRequest could not be read for process", proc);
       console.error(err);
       nodewgt = 1;
     }
+    if (processes[procId].type == 'special') nodewgt = 0; // special storage node
     process.stdout.write(nodewgt + ' ');
   }
 
