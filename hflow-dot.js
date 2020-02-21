@@ -10,16 +10,18 @@ var fs       = require('fs'),
 var doc = "\
 hflow-dot: converts HyperFlow workflow.json to graphviz dot format\n\
 Usage:\n\
-  hflow-dot [-p] <workflow-json-file-path>\n\
+  hflow-dot [-p] [--png] <workflow-json-file-path>\n\
   hflow-dot -h|--help\n\
   \
 Options:\n\
   -h --help   Prints this\n\
+  --png       Generate png\n\
   -p          Generates graph according to paritioning info";
 
 var opts = docopt(doc);
 
 var partitioning = opts['-p'];
+var png = opts['--png'];
 
 var file = opts['<workflow-json-file-path>'];
 
@@ -43,7 +45,7 @@ var sigToId = function(sig) {
   } else {
     return sigMap[sig];
   }
-};
+}
 
 // get a graphlib representation of the workflow process graph
 var procg = hfgraph(wf).procGraph;
@@ -56,11 +58,12 @@ processes.forEach(function(proc, idx) {
 var procNamesArray = Object.keys(procNames).sort((a,b) => a.substring(1).localeCompare(b.substring(1)));
 procNamesArray.forEach((pn, idx) => procNames[pn]=idx); // map name to index
 
-let cmap = procNamesArray.length > 10 ? 'hsv': 'jet';
-if (procNamesArray.length < 6) { cmap = 'autumn'; }
+let nColors = partitioning ? 2: procNamesArray.length;
+let cmap = nColors > 10 ? 'hsv': 'jet';
+if (nColors < 6) { cmap = 'autumn'; }
 let colors = colormap({
     colormap: cmap,
-    nshades: procNamesArray.length,
+    nshades: nColors,
     format: 'hex',
     alpha: 1
 });
@@ -69,14 +72,20 @@ let colors = colormap({
 procg.nodes().forEach(function(proc, idx) {
   var n = g.addNode(proc);
   var name = procg.node(proc);
+  let procId = Number(proc.split(':')[1])-1;
   if (partitioning) {
     n.set('label', "");
-    let procId = Number(proc.split(':')[1])-1;
-    let parNum = processes[procId].partition;
+    let parNum = processes[procId].partition-1;
     n.set('color', colors[parNum]);
   } else {
     n.set('label', name);
     n.set('color', colors[procNames[name]]);
+  }
+  // special storage node
+  if (processes[procId].type == "special") {
+    n.set('shape', 'cylinder');
+    n.set('width', 1.0);
+    n.set('height', 1.0);
   }
   n.set('style', 'filled');
   procg.successors(proc).forEach(function(succ) {
@@ -84,4 +93,13 @@ procg.nodes().forEach(function(proc, idx) {
   });
 });
 
-fs.writeFileSync(file + ".dot", g.to_dot());
+let basename = file.substring(0, file.lastIndexOf('.'));
+
+if (png) {
+  g.output( {
+    "type": "png",
+    "use": "dot",
+  }, basename + ".png")
+} else {
+  fs.writeFileSync(basename + ".dot", g.to_dot());
+}
