@@ -39,7 +39,7 @@ dot -Tpdf workflow.dot -o workflow.pdf
 ```
 hflow-metis: converts HyperFlow workflow.json to Metis graph format
 Usage:
-  hflow-metis [--ew] [--nw] [--ns] [--lw=<npart>] [--pwgts=<pwgts>] <workflow-json-file-path>
+  hflow-metis [--ew] [--nw] [--ns] [--sn] [--lw=<npart>] [--pwgts=<pwgts>] <workflow-json-file-path>
   hflow-metis -h|--help
   
 Options:
@@ -47,6 +47,7 @@ Options:
   --ew        Add edge weights (not implemented, probably not needed)
   --nw        Add node weights (requested cpu)
   --ns        Add node size (communication volume)
+  --sn        Add special storage node
   --lw=<npart>     Add level weights for 'npart' partitions
   --pwgts=<pwgts>  Partition size weights, e.g. '0.3,0.7'
 ```
