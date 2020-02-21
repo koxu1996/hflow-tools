@@ -20,16 +20,20 @@ hflow-info <workflow.json path>
 
 ### hflow-dot
 ```
-hflow-dot [-p] <workflow.json path>
-```
+hflow-dot: converts HyperFlow workflow.json to graphviz dot format
+Usage:
+  hflow-dot [-p] [--png] <workflow-json-file-path>
+  hflow-dot -h|--help
+  
 Options:
-```
--p    generate a partitioning graph (requires 'partitioning' info in workflow.json)
+  -h --help   Prints this
+  --png       Generate png
+  -p          Generates graph according to paritioning info
 ```
 
-To generate an image, use `dot`:
+To generate image in another format, use `dot`:
 ```
-dot -Tpng workflow.json.dot -o workflow.png
+dot -Tpdf workflow.dot -o workflow.pdf
 ```
 ### hflow-metis
 ```
