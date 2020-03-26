@@ -22,7 +22,9 @@
     "colormap": "^2.3.1",
     "docopt": "^0.6.2",
     "fast-json-patch": "^3.0.0-1",
-    "graphviz": "0.0.9"
+    "graphviz": "0.0.9",
+    "path": "^0.12.7",
+    "walkdir": "^0.4.1"
   },
   "bin": {
     "hflow-dot": "./hflow-dot.js",

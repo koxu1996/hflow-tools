@@ -12,12 +12,20 @@
 **/
 
 var fs = require('fs'),
-    hfgraph = require('./hf2graph.js');
+    hfgraph = require('./hf2graph.js'),
+    walk = require('walkdir'),
+    path = require('path');
 
 var partitioningPerPhase;
 
-
-var main = function(wf, partmap) {
+/** 
+ * Parameters:
+ * - @wf      - workflow json representation
+ * - @partmap - mapping of processes to partitions (optional)
+ * - @filedir - path to directory with workflow files (in, out, intermediate) (optional)
+ *              If present, output wf json will be annotated with file sizes and md5 sums.
+**/
+var main = function(wf, partmap, filedir) {
     var signals   = (wf.data      || wf.signals);
     var processes = (wf.processes || wf.tasks);
 
@@ -54,7 +62,10 @@ var main = function(wf, partmap) {
         wf.processes.forEach((proc, idx) => {
             let p = Number(partitions[idx]);
             if (nPartitions < p) { nPartitions = p; }
-            wf.processes[idx].partition = p+1;
+            if (wf.processes[idx].type != "special") {
+                console.error(wf.processes[idx].config);
+                wf.processes[idx].config.executor.partition = p+1;
+            }
         });
         nPartitions += 1;
 
@@ -64,13 +75,26 @@ var main = function(wf, partmap) {
         });
     }
 
+    var addFileInfo = function(filedir) {
+        walk.sync(filedir, function(filepath, stat) {
+            let fileName = path.basename(filepath);
+            if (sigMap[fileName]) {
+                wf.signals[sigMap[fileName]].size = stat.size;
+                //console.log(fileName, stat.size);
+            }
+        });
+        console.log("TRAVERSE FINISHED");
+    }
+
     if (partmap) computePartitions(partmap);
+
+    if (filedir) addFileInfo(filedir);
 
     return {
         partitioningPerPhase: partitioningPerPhase,
         nLevels: maxPhase,
         levelCounts: levelCounts,
-        wfjson: wf // annotated worklfow json
+        wfjson: wf // annotated workflow json
     }
 }
 
