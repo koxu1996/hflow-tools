@@ -83,7 +83,6 @@ var main = function(wf, partmap, filedir) {
                 //console.log(fileName, stat.size);
             }
         });
-        console.log("TRAVERSE FINISHED");
     }
 
     if (partmap) computePartitions(partmap);
