@@ -63,3 +63,9 @@ Using [Metis](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview) to generate
 gpmetis -objtype vol workflow.metis 2
 ```
 Where `vol` is the recommended optimization objective (minimizes communication between partitions), and `2` is the number of partitions.
+
+### hflow-convert-makeflow
+```
+hflow-convert-makeflow: converts workflows in Makeflow mf/json format into HyperFlow json
+Usage: hflow-convert-makeflow <makeflow MF/JSON file> 
+```

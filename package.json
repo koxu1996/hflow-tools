@@ -29,6 +29,7 @@
   "bin": {
     "hflow-dot": "./hflow-dot.js",
     "hflow-metis": "./hflow-metis.js",
-    "hflow-info": "./hflow-info"
+    "hflow-info": "./hflow-info",
+    "hflow-convert-makeflow": "./hflow-convert-makeflow"
   }
 }
