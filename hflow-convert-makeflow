@@ -1,0 +1,14 @@
+#!/usr/bin/env node
+
+var MakeflowConverter = require('./makeflow2hyperflow.js');
+
+if (!process.argv[2]) {
+    console.log("Usage: hflow-convert-makeflow <makeflow MF/JSON file> [function_name]");
+    process.exit();
+}
+
+pc = new MakeflowConverter(process.argv[3] || null);
+
+pc.convertFromFile(process.argv[2], function (err, wfOut) {
+    console.log(JSON.stringify(wfOut, null, 2));
+});
