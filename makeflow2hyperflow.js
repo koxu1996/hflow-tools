@@ -15,7 +15,6 @@
 var fs = require('fs');
 const readline = require('readline');
 
-// Pegasus DAX converter constructor, accepts optional name of function, used to execute tasks
 var MakeflowConverter = function(functionName) {
     if (typeof(functionName) === 'undefined') {
         this.functionName = "command_print";
