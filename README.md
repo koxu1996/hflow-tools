@@ -5,8 +5,7 @@ A collection of small useful tools for the HyperFlow workflow engine
 - `hflow-info`: print various information about a workflow and annotate workflow json file.
 - `hflow-dot`: convert HyperFlow workflow graph to Graphviz dot format. 
 - `hflow-metis`: convert HyperFlow workflow graph to Metis format (for graph partitioning).
-- `hflow-convert-makeflow`: convert [Makeflow](https://github.com/cooperative-computing-lab/makeflow-examples) mf/json workflow to HyperFlow json.
-
+- `hflow-convert-makeflow`: convert [Makeflow](http://ccl.cse.nd.edu/software/makeflow) mf/json workflow to HyperFlow json.
 ## Installation
 ```
 npm install -g https://github.com/hyperflow-wms/hflow-tools/archive/master.tar.gz
@@ -68,5 +67,6 @@ Where `vol` is the recommended optimization objective (minimizes communication b
 ### hflow-convert-makeflow
 ```
 hflow-convert-makeflow: converts workflows in Makeflow mf/json format into HyperFlow json
-Usage: hflow-convert-makeflow <makeflow MF/JSON file> 
+Usage: 
+  hflow-convert-makeflow <makeflow MF/JSON file> 
 ```
