@@ -75,6 +75,10 @@ def getWorkflowName(jobDescriptionsDf):
     name = jobDescriptionsDf.workflowName[0]
     return name
 
+def getNodeNameForJob(jobId, jobDescriptionsDf):
+    name = jobDescriptionsDf.loc[jobDescriptionsDf.jobId==jobId].nodeName.iloc[0]
+    return name
+
 def getFirstEventDatetime(metricsDf):
     eventsDf = metricsDf.loc[metricsDf.parameter == 'event']
     sortedDf = eventsDf.sort_values(by=['time'])
@@ -83,7 +87,7 @@ def getFirstEventDatetime(metricsDf):
     firstEventDatetime = strToDatetime(firstEventDatetimeString)
     return firstEventDatetime
 
-def extractNodesJobs(metricsDf):
+def extractNodesJobs(metricsDf, jobDescriptionsDf):
     df = metricsDf.sort_values(by=['time'])
     eventsDf = df.loc[df.parameter == 'event']
 
@@ -93,8 +97,7 @@ def extractNodesJobs(metricsDf):
     allJobIds = eventsDf.jobId.unique()
     for jobId in allJobIds:
 
-        envDf = df.loc[df.jobId == jobId].loc[df.parameter == 'env']
-        nodeName = envDf.iloc[0]['value']['nodeName']
+        nodeName = getNodeNameForJob(jobId, jobDescriptionsDf)
 
         if nodeName not in nodesJobs:
             nodesJobs[nodeName] = []
@@ -151,7 +154,7 @@ def visualizeDir(sourceDir):
     metricsDf = pd.DataFrame(metrics)
 
     workflowName = getWorkflowName(jobDescriptionsDf)
-    nodesJobs = extractNodesJobs(metricsDf)
+    nodesJobs = extractNodesJobs(metricsDf, jobDescriptionsDf)
     nodesJobsNO = extractNodesJobsNonoverlap(nodesJobs)
     taskTypes = extractTaskTypes(metricsDf)
 
