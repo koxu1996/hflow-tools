@@ -3,7 +3,8 @@
   "version": "1.0.2",
   "description": "Convert Hyperflow workflow graph to Graphviz dot format",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall" : "cd ./hflow-viz-trace && pipenv install"
   },
   "repository": {
     "type": "git",
@@ -30,6 +31,7 @@
     "hflow-dot": "./hflow-dot.js",
     "hflow-metis": "./hflow-metis.js",
     "hflow-info": "./hflow-info",
-    "hflow-convert-makeflow": "./hflow-convert-makeflow"
+    "hflow-convert-makeflow": "./hflow-convert-makeflow",
+    "hflow-viz-trace": "./hflow-viz-trace/bin.sh"
   }
 }
