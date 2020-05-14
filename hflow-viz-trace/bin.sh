@@ -2,9 +2,11 @@
 set -e
 
 PACKAGE="hflow-tools"
-NPM_ROOT=$(npm root ${PACKAGE})
+NPM_ROOT=$(npm root -g)
 
-(
-  cd ${NPM_ROOT}/${PACKAGE}/hflow-viz-trace
-  pipenv run ./main.py $@
-)
+pushd . > /dev/null
+cd ${NPM_ROOT}/${PACKAGE}/hflow-viz-trace
+PYTHON="$(pipenv --venv)/bin/python"
+popd  > /dev/null
+
+$PYTHON ${NPM_ROOT}/${PACKAGE}/hflow-viz-trace/main.py $@
