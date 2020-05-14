@@ -6,11 +6,12 @@ A collection of small useful tools for the HyperFlow workflow engine
 - `hflow-dot`: convert HyperFlow workflow graph to Graphviz dot format. 
 - `hflow-metis`: convert HyperFlow workflow graph to Metis format (for graph partitioning).
 - `hflow-convert-makeflow`: convert [Makeflow](http://ccl.cse.nd.edu/software/makeflow) mf/json workflow to HyperFlow json.
+- `hflow-viz-trace`: generates Gantt chart visualization from [workflow execution logs](https://github.com/hyperflow-wms/log-parser) 
 
 ## Requirements
 
-- node
-- python 3.7 + pipenv
+- Node v12.x
+- Python 3.7 + pipenv (for `hflow-viz-trace`)
 
 ## Installation
 ```
