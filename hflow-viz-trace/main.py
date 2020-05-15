@@ -75,6 +75,14 @@ def getWorkflowName(jobDescriptionsDf):
     name = jobDescriptionsDf.workflowName[0]
     return name
 
+def getWorkflowSize(jobDescriptionsDf):
+    size = jobDescriptionsDf['size'][0]
+    return size
+
+def getWorkflowVersion(jobDescriptionsDf):
+    version = jobDescriptionsDf.version[0]
+    return version
+
 def getNodeNameForJob(jobId, jobDescriptionsDf):
     name = jobDescriptionsDf.loc[jobDescriptionsDf.jobId==jobId].nodeName.iloc[0]
     return name
@@ -143,7 +151,7 @@ def lightenColor(color, amount=0.5):
     return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
 
 
-def visualizeDir(sourceDir):
+def visualizeDir(sourceDir, displayOnly):
 
     jobDescriptionsPath = os.path.join(sourceDir, 'job_descriptions.jsonl')
     jobDescriptions = loadJsonlFile(jobDescriptionsPath)
@@ -210,18 +218,23 @@ def visualizeDir(sourceDir):
         lOrders.append(order)
     gnt.legend([handles[idx] for idx in lOrders],[labels[idx] for idx in lOrders], loc="best")
 
-    plt.show()
+    if displayOnly is True:
+        plt.show()
+    else:
+        wfSize = getWorkflowSize(jobDescriptionsDf)
+        wfVersion = getWorkflowVersion(jobDescriptionsDf)
+        filename = '{}-{}-{}.png'.format(workflowName, wfSize, wfVersion)
+        plt.savefig(filename)
+        print('Chart saved to {}'.format(filename))
     return
 
 
 def main():
     parser = argparse.ArgumentParser(description='HyperFlow execution visualizer')
-    parser.add_argument('-s', '--source', type=str, help='Directory with parsed logs')
+    parser.add_argument('-s', '--source', type=str, required=True, help='Directory with parsed logs')
+    parser.add_argument('-d', '--show', action='store_true', default=False, help='Display plot instead of saving to file')
     args = parser.parse_args()
-    if args.source is None:
-        parser.print_help()
-        return 1
-    visualizeDir(args.source)
+    visualizeDir(args.source, args.show)
 
 
 if __name__ == '__main__':
