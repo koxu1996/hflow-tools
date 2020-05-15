@@ -1,10 +1,10 @@
 {
   "name": "hflow-tools",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Convert Hyperflow workflow graph to Graphviz dot format",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "postinstall" : "cd ./hflow-viz-trace && pipenv install"
+    "postinstall": "cd ./hflow-viz-trace && pipenv install"
   },
   "repository": {
     "type": "git",
