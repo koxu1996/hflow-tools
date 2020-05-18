@@ -40,6 +40,7 @@ def splitJobsIntoDisjointGroups(jobs):
         else:
             best_interval = unplacedJobs[min_ind]
             currentGroup.append(best_interval)
+            currentEnd = best_interval['handlerEnd']
             unplacedJobs.remove(best_interval)
     if currentGroup != []:
         groups.append(currentGroup)
