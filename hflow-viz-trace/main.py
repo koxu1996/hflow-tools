@@ -11,6 +11,7 @@ import colorsys
 import math
 import matplotlib.pyplot as plt
 import numpy as np
+import sys
 
 
 def strToDatetime(dateTimeString):
@@ -117,10 +118,17 @@ def extractNodesJobs(metricsDf, jobDescriptionsDf):
             'name': jobDf.iloc[0]['name'],
         }
         for typex in ['handlerStart', 'jobStart', 'jobEnd', 'handlerEnd']:
-            stringVal = jobDf.loc[df.value==typex].iloc[0]['time']
-            dateTime = strToDatetime(stringVal)
-            job[typex] = (dateTime - firstEventTime).total_seconds()
-        nodesJobs[nodeName].append(job)
+            allOK=True;
+            try:
+                stringVal = jobDf.loc[df.value==typex].iloc[0]['time']
+            except IndexError:
+                print("Warning: missing event", typex, "for", jobId, file=sys.stderr);
+                allOK=False;
+            else: 
+                dateTime = strToDatetime(stringVal)
+                job[typex] = (dateTime - firstEventTime).total_seconds()
+        if allOK:
+            nodesJobs[nodeName].append(job)
 
     return nodesJobs
 
