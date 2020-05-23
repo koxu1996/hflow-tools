@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from natsort import natsorted, ns
+from scipy import interpolate
 import os
 import argparse
 import jsonlines
@@ -150,6 +151,32 @@ def extractTaskTypes(metricsDf):
     taskTypes = metricsDf.loc[metricsDf.parameter == 'event'].loc[metricsDf.value == 'handlerStart'].sort_values(by=['time']).name.unique()
     return taskTypes
 
+def extractStages(metricsDf, event_start='jobStart', event_end='jobEnd'):
+
+    eventsDf = metricsDf.loc[metricsDf.parameter == 'event']
+    sortedDf = eventsDf.sort_values(by=['time'])
+
+    firstEventTime = getFirstEventDatetime(metricsDf)
+
+    stages = [{'timeOffset': 0.0, 'activeItems': 0}]
+    numActiveItems = 0
+    for _, row in sortedDf.iterrows():
+
+        eventType = row['value']
+        if eventType not in [event_start, event_end]:
+            continue
+
+        if eventType == event_start:
+            numActiveItems += 1
+        elif eventType == event_end:
+            numActiveItems -= 1
+
+        dateTime = strToDatetime(row['time'])
+        timeOffset = (dateTime - firstEventTime).total_seconds()
+
+        stages.append({'timeOffset': timeOffset, 'activeItems': numActiveItems})
+
+    return stages
 
 def lightenColor(color, amount=0.5):
     try:
@@ -195,8 +222,12 @@ def visualizeDir(sourceDir, displayOnly):
 
     # Preparing chart background
     plt.rc('figure', figsize=(25,15))
-    fig, gnt = plt.subplots()
-    plt.title(workflowName)
+    fig, (gnt, gnt2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]})
+    plt.suptitle(workflowName)
+
+    ### SUBPLOT 1
+
+    gnt.title.set_text('Execution process')
     gnt.set_xlim(0, max_time)
     gnt.set_xlabel('Time [s]')
     gnt.set_ylabel('Node_offset')
@@ -226,6 +257,33 @@ def visualizeDir(sourceDir, displayOnly):
         order = labels.index(taskType)
         lOrders.append(order)
     gnt.legend([handles[idx] for idx in lOrders],[labels[idx] for idx in lOrders], loc="best")
+
+    ### SUBPLOT 2
+
+    gnt2.title.set_text('Active jobs')
+    gnt2.set_xlim(0, max_time)
+    gnt2.set_xlabel('Time [s]')
+    gnt2.set_ylabel('Number of jobs')
+    gnt2.grid(True)
+
+    stages = extractStages(metricsDf)
+    stages_x = []
+    stages_y = []
+    for stage in stages:
+        stages_x.append(stage['timeOffset'])
+        stages_y.append(stage['activeItems'])
+    plt.step(stages_x, stages_y, label='exact value')
+
+    DEG = 10
+
+    f = np.poly1d(np.polyfit(np.array(stages_x), np.array(stages_y), DEG))
+    xnew = np.linspace(0, max_time, len(stages)*100)
+    ynew = f(xnew)
+    plt.plot(xnew, ynew, label='approximation ({}-degree)'.format(DEG), ls='--', color='red')
+
+    gnt2.legend(loc="best")
+
+    ### COMMON
 
     if displayOnly is True:
         plt.show()
