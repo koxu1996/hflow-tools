@@ -63,7 +63,6 @@ var main = function(wf, partmap, filedir) {
             let p = Number(partitions[idx]);
             if (nPartitions < p) { nPartitions = p; }
             if (wf.processes[idx].type != "special") {
-                console.error(wf.processes[idx].config);
                 wf.processes[idx].config.executor.partition = p+1;
             }
         });

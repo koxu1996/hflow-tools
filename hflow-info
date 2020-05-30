@@ -29,7 +29,17 @@ var fileContents = fs.readFileSync(file);
 
 var wf = JSON.parse(fileContents);
 
-wfinfo = require('./wfinfo.js')(wf, partFile, fileDir);
+var partmap;
+if (partFile) {
+  try {
+    let partfilecontent = fs.readFileSync(partFile, 'utf8');
+    partmap = partfilecontent.split("\n");
+  } catch(err) {
+     console.log("Error reading partition file", err);
+  }
+}
+
+wfinfo = require('./wfinfo.js')(wf, partmap, fileDir);
 
 var procNames = {}; 
 

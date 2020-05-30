@@ -117,7 +117,7 @@ if (full) { // generate full graph
     let procId = Number(proc.split(':')[1])-1;
     if (partitioning) {
       n.set('label', "");
-      let parNum = processes[procId].partition-1;
+      let parNum = processes[procId].config.executor.partition-1;
       n.set('color', colors[parNum]);
     } else {
       n.set('label', name);
