@@ -32,6 +32,7 @@
     "hflow-metis": "./hflow-metis.js",
     "hflow-info": "./hflow-info",
     "hflow-convert-makeflow": "./hflow-convert-makeflow",
-    "hflow-viz-trace": "./hflow-viz-trace/bin.sh"
+    "hflow-viz-trace": "./hflow-viz-trace/bin.sh",
+    "hflow-patoh": "./patoh/hflow-patoh.js"
   }
 }
