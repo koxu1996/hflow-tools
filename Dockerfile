@@ -1,25 +1,16 @@
-FROM nikolaik/python-nodejs:python3.7-nodejs12
-MAINTAINER Mateusz Plinta
+FROM nikolaik/python-nodejs:python3.7-nodejs12 as base
+ENV PYROOT /pyroot
+ENV PYTHONUSERBASE $PYROOT
 
-ENV USER=docker0
+FROM base AS builder
+RUN pip install 'pipenv==2018.11.26'
 
-RUN apt-get update && apt-get install sudo
+WORKDIR /build
+COPY hflow-viz-trace/Pipfile* ./
+RUN PIP_USER=1 PIP_IGNORE_INSTALLED=1 pipenv install --system --deploy --ignore-pipfile
 
-# Create a group and user
-RUN addgroup "$USER"
-RUN adduser \
-    --ingroup "$USER" \
-    --disabled-password \
-    "$USER"
 
-RUN mkdir -p /etc/sudoers.d
-RUN echo "$USER  ALL=NOPASSWD: ALL" > "/etc/sudoers.d/$USER-override"
-    
-RUN mkdir hflow-tools
-COPY . /hflow-tools
-RUN chown -R "$USER" /hflow-tools
-USER "$USER"
-RUN mkdir ~/.npm-global
-RUN npm config set prefix '~/.npm-global'
-ENV PATH "/home/$USER/.npm-global/bin:$PATH"
-RUN npm install -g hflow-tools
+FROM base
+COPY --from=builder $PYROOT/lib/ $PYROOT/lib/
+COPY . .
+RUN npm install -g
