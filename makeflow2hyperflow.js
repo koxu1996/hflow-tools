@@ -15,6 +15,25 @@
 var fs = require('fs');
 const readline = require('readline');
 
+// Simple name map to add meaningful names to some commands
+// E.g. if exec is "bwa" and there is "index" in args, use name "bwa_index"
+// TODO: make it a config file
+var nameMap = [
+    [ "bwa", "index", "bwa_index" ],
+    [ "bwa", "mem", "bwa_mem" ]
+];
+
+
+var lookupName = function(exec, args) {
+    var matchingRows = nameMap.filter(row => row[0] == exec);
+    var match = matchingRows.filter(row => args.indexOf(row[1]) != -1);
+    if (match.length) {
+        return match[0][2];
+    }
+    return null;
+}
+
+
 var MakeflowConverter = function(functionName) {
     if (typeof(functionName) === 'undefined') {
         this.functionName = "command_print";
@@ -64,41 +83,55 @@ function createWorkflow(wf_mfjson, functionName, cb) {
         outs: []
     }
 
-    wf_mfjson.rules.forEach(function(mfproc, procId) {
-        var cmd = mfproc.command.split(" ");
+    // cmd[0] = executable, cmd[1:n] = arguments
+    var mkCommandObject = function(cmd) {
+        var cmdObj = {};
         var executable = cmd[0];
         if (executable.substring(0,2) == "./") { executable = executable.substring(2); }
+        cmdObj.executable = executable;
         var args = cmd.slice(1);
 
-        wfOut.processes.push({
-            "name": executable,
-            "function": "{{function}}",
-            "type": "dataflow",
-            "firingLimit": 1,
-            "config": {
-                "executor": {
-                    "executable": executable,
-                    "args": args
-                }
-            },
-            "ins": [],
-            "outs": []
-        });
-
-        // check for stdout/stderr redirections
+        // check for stdout/stderr redirections and pipes
         var stdoutIdx = args.indexOf(">");
         var stderrIdx = args.indexOf("2>");
+        var pipeIdx = args.indexOf("|");
         if (stdoutIdx != -1) {
-            wfOut.processes[procId].config.executor.stdout = args[stdoutIdx+1]
+            cmdObj.stdout = args[stdoutIdx+1];
             delete args[stdoutIdx];
             delete args[stdoutIdx+1];
         }
         if (stderrIdx != -1) {
-            wfOut.processes[procId].config.executor.stderr = args[stderrIdx+1]
+            cmdObj.stderr = args[stderrIdx+1];
             delete args[stderrIdx];
             delete args[stderrIdx+1];
         }
-        wfOut.processes[procId].config.executor.args = args.filter(val => val != null);
+        if (pipeIdx != -1) {
+            cmdObj.pipes = true;
+            if (args[pipeIdx+1].substring(0,2) == "./") { args[pipeIdx+1] = args[pipeIdx+1].substring(2); }
+            // if there's a pipe, we recursively create a command object and put it into 'pipeTo'
+            // FIXME: remove args from "|"
+            cmdObj.pipeTo = mkCommandObject(args.slice(pipeIdx+1));
+        }
+        cmdObj.args = args.filter(val => val != null);
+        return cmdObj;
+    }
+
+    wf_mfjson.rules.forEach(function(mfproc, procId) {
+        var cmd = mfproc.command.split(" ");
+        wfOut.processes.push({
+            "name": "<placeholder>",
+            "function": "{{function}}",
+            "type": "dataflow",
+            "firingLimit": 1,
+            "config": {},
+            "ins": [],
+            "outs": []
+        });
+        var cmdObj = mkCommandObject(cmd);
+        var executable = cmdObj.executable;
+        var args = cmdObj.args;
+        wfOut.processes[procId].config.executor = cmdObj;
+        wfOut.processes[procId].name = lookupName(executable, args) || executable;
 
         var dataId, dataName;
         (mfproc.inputs || []).forEach(function(dataName) {
@@ -194,6 +227,9 @@ function mf2json(mf, cb) {
             if (cmd[0] == "LOCAL") { 
                 cmd.shift(); 
                 jsonOut.rules[i]["local_job"] = true;
+            }
+            if (cmd[0].match(/^(python|perl)$/)) {
+                cmd.shift();
             }
             jsonOut.rules[i].command = cmd.join(' ');
             jsonOut.rules[i].inputs = ins;
