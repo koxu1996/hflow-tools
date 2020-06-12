@@ -187,8 +187,7 @@ def lightenColor(color, amount=0.5):
     return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
 
 
-def visualizeDir(sourceDir, displayOnly):
-
+def visualizeDir(sourceDir, displayOnly, showActiveJobs):
     jobDescriptionsPath = os.path.join(sourceDir, 'job_descriptions.jsonl')
     jobDescriptions = loadJsonlFile(jobDescriptionsPath)
     jobDescriptionsDf = pd.DataFrame(jobDescriptions)
@@ -222,8 +221,12 @@ def visualizeDir(sourceDir, displayOnly):
 
     # Preparing chart background
     plt.rc('figure', figsize=(25,15))
-    fig, (gnt, gnt2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]})
-    plt.suptitle(workflowName)
+    if showActiveJobs:
+        fig, (gnt, gnt2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]})
+        plt.suptitle(workflowName)
+    else:
+        fig, gnt = plt.subplots()
+        plt.title(workflowName)
 
     ### SUBPLOT 1
 
@@ -260,28 +263,29 @@ def visualizeDir(sourceDir, displayOnly):
 
     ### SUBPLOT 2
 
-    gnt2.title.set_text('Active jobs')
-    gnt2.set_xlim(0, max_time)
-    gnt2.set_xlabel('Time [s]')
-    gnt2.set_ylabel('Number of jobs')
-    gnt2.grid(True)
+    if showActiveJobs:
+        gnt2.title.set_text('Active jobs')
+        gnt2.set_xlim(0, max_time)
+        gnt2.set_xlabel('Time [s]')
+        gnt2.set_ylabel('Number of jobs')
+        gnt2.grid(True)
 
-    stages = extractStages(metricsDf)
-    stages_x = []
-    stages_y = []
-    for stage in stages:
-        stages_x.append(stage['timeOffset'])
-        stages_y.append(stage['activeItems'])
-    plt.step(stages_x, stages_y, label='exact value')
+        stages = extractStages(metricsDf)
+        stages_x = []
+        stages_y = []
+        for stage in stages:
+            stages_x.append(stage['timeOffset'])
+            stages_y.append(stage['activeItems'])
+        plt.step(stages_x, stages_y, label='exact value')
 
-    DEG = 10
+        #DEG = 10
 
-    f = np.poly1d(np.polyfit(np.array(stages_x), np.array(stages_y), DEG))
-    xnew = np.linspace(0, max_time, len(stages)*100)
-    ynew = f(xnew)
-    plt.plot(xnew, ynew, label='approximation ({}-degree)'.format(DEG), ls='--', color='red')
-
-    gnt2.legend(loc="best")
+        #f = np.poly1d(np.polyfit(np.array(stages_x), np.array(stages_y), DEG))
+        #xnew = np.linspace(0, max_time, len(stages)*100)
+        #ynew = f(xnew)
+        #plt.plot(xnew, ynew, label='approximation ({}-degree)'.format(DEG), ls='--', color='red')
+    
+        gnt2.legend(loc="best")
 
     ### COMMON
 
@@ -300,8 +304,9 @@ def main():
     parser = argparse.ArgumentParser(description='HyperFlow execution visualizer')
     parser.add_argument('-s', '--source', type=str, required=True, help='Directory with parsed logs')
     parser.add_argument('-d', '--show', action='store_true', default=False, help='Display plot instead of saving to file')
+    parser.add_argument('-a', '--show-active-jobs', action='store_true', default=False, help='Display the number of active jobs subplot')
     args = parser.parse_args()
-    visualizeDir(args.source, args.show)
+    visualizeDir(args.source, args.show, args.show_active_jobs)
 
 
 if __name__ == '__main__':
