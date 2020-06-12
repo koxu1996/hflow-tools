@@ -119,12 +119,12 @@ def extractNodesJobs(metricsDf, jobDescriptionsDf):
             'name': jobDf.iloc[0]['name'],
         }
         for typex in ['handlerStart', 'jobStart', 'jobEnd', 'handlerEnd']:
-            allOK=True;
+            allOK=True
             try:
                 stringVal = jobDf.loc[df.value==typex].iloc[0]['time']
             except IndexError:
-                print("Warning: missing event", typex, "for", jobId, file=sys.stderr);
-                allOK=False;
+                print("Warning: missing event", typex, "for", jobId, file=sys.stderr)
+                allOK=False
             else: 
                 dateTime = strToDatetime(stringVal)
                 job[typex] = (dateTime - firstEventTime).total_seconds()
