@@ -394,7 +394,8 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs):
     for taskType in taskTypes:
         order = labels.index(taskType)
         lOrders.append(order)
-    gnt.legend([handles[idx] for idx in lOrders],[labels[idx] for idx in lOrders], loc="best")
+    gnt.legend([handles[idx] for idx in lOrders],[labels[idx] for idx in lOrders], loc='upper center', bbox_to_anchor=(0.5, 1.05),
+          ncol=3, fancybox=True, shadow=True)
 
     ### SUBPLOT 2
 
