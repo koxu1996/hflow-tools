@@ -344,7 +344,7 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs):
         plt.suptitle(workflowName)
     else:
         fig, gnt = plt.subplots()
-        plt.title(workflowName)
+        plt.suptitle(workflowName)
 
     # Plot background color for even lanes
     lastKnownNode = None
