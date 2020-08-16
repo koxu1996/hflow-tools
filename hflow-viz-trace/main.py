@@ -302,7 +302,7 @@ def lightenColor(color, amount=0.5):
     return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
 
 
-def visualizeDir(sourceDir, displayOnly, showActiveJobs):
+def visualizeDir(sourceDir, displayOnly, showActiveJobs, plotFullNodesNames):
     metricsPath = os.path.join(sourceDir, 'metrics.jsonl')
     metrics = loadJsonlFile(metricsPath)
 
@@ -320,6 +320,8 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs):
     rowOffset = 30
     y_ticks = range(rowOffset, (len(nodesJobsNO)+1)*rowOffset, rowOffset)
     y_labels = [(key) for key in natsorted(nodesJobsNO.keys())]
+    if plotFullNodesNames is False:
+        y_labels = map(lambda label: label.rsplit('-', 1)[1], y_labels)
     max_time = 0.0
     for _, jobGroup in nodesJobsNO.items():
         for jobID in jobGroup:
@@ -426,8 +428,9 @@ def main():
     parser.add_argument('-s', '--source', type=str, required=True, help='Directory with parsed logs')
     parser.add_argument('-d', '--show', action='store_true', default=False, help='Display plot instead of saving to file')
     parser.add_argument('-a', '--show-active-jobs', action='store_true', default=False, help='Display the number of active jobs subplot')
+    parser.add_argument('-f', '--full-nodes-names', action='store_true', default=False, help='Display full nodes\' names')
     args = parser.parse_args()
-    visualizeDir(args.source, args.show, args.show_active_jobs)
+    visualizeDir(args.source, args.show, args.show_active_jobs, args.full_nodes_names)
 
 
 if __name__ == '__main__':
