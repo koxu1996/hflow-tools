@@ -317,8 +317,9 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs):
     taskTypes = extractOrderedTaskTypes(metricList)
 
     # Prepare axis data
-    rowOffset = 30
-    y_ticks = range(rowOffset, (len(nodesJobsNO)+1)*rowOffset, rowOffset)
+    rowHalfHeight = 15
+    rowFullHeight = rowHalfHeight * 2
+    y_ticks = range(rowHalfHeight, (len(nodesJobsNO)+1)*rowFullHeight, rowFullHeight)
     y_labels = [(key) for key in natsorted(nodesJobsNO.keys())]
     max_time = 0.0
     for _, jobGroup in nodesJobsNO.items():
@@ -344,6 +345,19 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs):
     else:
         fig, gnt = plt.subplots()
         plt.title(workflowName)
+
+    # Plot background color for even lanes
+    lastKnownNode = None
+    secondColorEnabled = False
+    for i, nodeKey in enumerate(natsorted(nodesJobsNO)): # same order as in plot
+        jobGroup = nodesJobsNO[nodeKey]
+        firstJobID = jobGroup[0]
+        fullNodeName = jobMap[firstJobID]['nodeName']
+        if fullNodeName != lastKnownNode:
+            lastKnownNode = fullNodeName
+            secondColorEnabled = not secondColorEnabled
+        if secondColorEnabled:
+            gnt.axhspan(rowFullHeight*i, rowFullHeight*(i+1), facecolor='grey', alpha=0.2)
 
     ### SUBPLOT 1
 
@@ -371,8 +385,8 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs):
             else:
                 usedLabels.add(job['name'])
 
-            broken_barh_without_scaling(gnt, [(jobDetails['jobStart'], jobDetails['jobEnd']-jobDetails['jobStart'])], (rowOffset*(i+1)-8, 16), color=cColor, label=cLabel)
-            broken_barh_without_scaling(gnt, [(jobDetails['handlerStart'], jobDetails['handlerEnd']-jobDetails['handlerStart'])], (rowOffset*(i+1)-2, 4), color=lightenColor(cColor,1.3))
+            broken_barh_without_scaling(gnt, [(jobDetails['jobStart'], jobDetails['jobEnd']-jobDetails['jobStart'])], ((rowHalfHeight+rowFullHeight*i)-8, 16), color=cColor, label=cLabel)
+            broken_barh_without_scaling(gnt, [(jobDetails['handlerStart'], jobDetails['handlerEnd']-jobDetails['handlerStart'])], ((rowHalfHeight+rowFullHeight*i)-2, 4), color=lightenColor(cColor,1.3))
 
     # Draw legend
     handles, labels = gnt.get_legend_handles_labels()
@@ -432,4 +446,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
