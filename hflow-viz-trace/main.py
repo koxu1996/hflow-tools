@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from collections import defaultdict
 from natsort import natsorted, ns
 from scipy import interpolate
 import os
@@ -7,7 +8,9 @@ import argparse
 import jsonlines
 import pandas as pd
 import datetime
+import matplotlib.cbook as cbook
 import matplotlib.colors as mc
+import matplotlib.collections as mcoll
 import colorsys
 import math
 import matplotlib.pyplot as plt
@@ -20,30 +23,84 @@ def strToDatetime(dateTimeString):
     dateTime = datetime.datetime.strptime(dateTimeString, pattern)
     return dateTime
 
+def buildJobMap(jobDescriptions):
+    jobMap = {}
+    for row in jobDescriptions:
+        jobId = row['jobId']
+        if jobId in jobMap:
+            raise Exception('Duplicated description for job {}'.format(jobId))
+        jobMap[jobId] = row
+    return jobMap
+
+def buildMetricList(metrics):
+    metricList = []
+    for metric in metrics:
+        newMetric = metric.copy()
+        newMetric['time'] = strToDatetime(newMetric['time'])
+        metricList.append(newMetric)
+    return metricList
+
+def getLastEventDatetime(metricList):
+    maxTime = None
+    for metric in metricList:
+        if metric['parameter'] != 'event':
+            continue
+        time = metric['time']
+        if maxTime is None or time > maxTime:
+            maxTime = time
+    return maxTime
 
 def splitJobsIntoDisjointGroups(jobs):
+
+    # firstly we prepare ordered map of jobs (order by start time)
+    jobsByStartTime = {}
+    for jobId, jobDetails in jobs.items():
+        timeStart = jobDetails['handlerStart']
+        if timeStart not in jobsByStartTime:
+            jobsByStartTime[timeStart] = []
+        details = jobDetails.copy()
+        details['jobId'] = jobId
+        jobsByStartTime[timeStart].append(details)
+
+    unplacedJobsSorted = sorted(jobsByStartTime.items())
+
     groups = []
-    unplacedJobs = jobs.copy()
-    currentEnd = 0
+
+    jobs.copy()
+    currentEnd = None
     currentGroup = []
-    while unplacedJobs != []:
-        min_ind = None
-        min_val = None
-        for i, el in enumerate(unplacedJobs):
-            if el['handlerStart'] < currentEnd:
+    while len(unplacedJobsSorted) != 0:
+
+        # loop for finding job with smallest handlerStart,
+        # but greater that last handlerEnd in group
+        best_job = None
+        i = 0
+        while i < len(unplacedJobsSorted):
+            unplacedJobsKV = unplacedJobsSorted[i]
+            timeStart = unplacedJobsKV[0]
+            jobsAtTime = unplacedJobsKV[1]
+            j = 0
+            while j < len(jobsAtTime):
+                unplacedJob = jobsAtTime[j]
+                if (currentEnd is None) or (timeStart > currentEnd):
+                    # print(unplacedJob['handlerStart'], unplacedJob['handlerEnd'])
+                    currentGroup.append(unplacedJob['jobId'])
+                    currentEnd = unplacedJob['handlerEnd']
+                    del jobsAtTime[j]
+                    continue
+                j += 1
+
+            if len(jobsAtTime) == 0:
+                del unplacedJobsSorted[i]
                 continue
-            if (min_ind is None) or (el['handlerStart']< min_val):
-                min_ind = i
-                min_val = el['handlerStart']
-        if min_ind is None:
+            i += 1
+
+        # print('---')
+        if best_job is None:
             groups.append(currentGroup)
             currentGroup = []
-            currentEnd = 0
-        else:
-            best_interval = unplacedJobs[min_ind]
-            currentGroup.append(best_interval)
-            currentEnd = best_interval['handlerEnd']
-            unplacedJobs.remove(best_interval)
+            currentEnd = None
+
     if currentGroup != []:
         groups.append(currentGroup)
 
@@ -74,64 +131,82 @@ def loadJsonlFile(path):
     return rows
 
 
-def getWorkflowName(jobDescriptionsDf):
-    name = jobDescriptionsDf.workflowName[0]
+def getWorkflowName(jobDescriptions):
+    name = jobDescriptions[0]['workflowName']
+    # additional checks
+    for row in jobDescriptions:
+        if row['workflowName'] != name:
+            raise Exception("Inconsistent jobDescriptions. New workflow name '{}'".format(row['workflowName'])
+                + "; last known '{}'.".format(name))
     return name
 
-def getWorkflowSize(jobDescriptionsDf):
-    size = jobDescriptionsDf['size'][0]
+def getWorkflowSize(jobDescriptions):
+    size = jobDescriptions[0]['size']
+    # additional checks
+    for row in jobDescriptions:
+        if row['size'] != size:
+            raise Exception("Inconsistent jobDescriptions. New size '{}'".format(row['size'])
+                + "; last known '{}'.".format(size))
     return size
 
-def getWorkflowVersion(jobDescriptionsDf):
-    version = jobDescriptionsDf.version[0]
+def getWorkflowVersion(jobDescriptions):
+    version = jobDescriptions[0]['version']
+    # additional checks
+    for row in jobDescriptions:
+        if row['version'] != version:
+            raise Exception("Inconsistent jobDescriptions. New version '{}'".format(row['version'])
+                + "; last known '{}'.".format(version))
     return version
 
 def getNodeNameForJob(jobId, jobDescriptionsDf):
     name = jobDescriptionsDf.loc[jobDescriptionsDf.jobId==jobId].nodeName.iloc[0]
     return name
 
-def getFirstEventDatetime(metricsDf):
-    eventsDf = metricsDf.loc[metricsDf.parameter == 'event']
-    sortedDf = eventsDf.sort_values(by=['time'])
-    firstEventDatetimeString = sortedDf.time.min()
+def getFirstEventDatetime(metricList):
+    minTime = None
+    for metric in metricList:
+        if metric['parameter'] != 'event':
+            continue
+        time = metric['time']
+        if minTime is None or time < minTime:
+            minTime = time
+    return minTime
 
-    firstEventDatetime = strToDatetime(firstEventDatetimeString)
-    return firstEventDatetime
+def extractNodesJobs(metricList, jobMap):
 
-def extractNodesJobs(metricsDf, jobDescriptionsDf):
-    df = metricsDf.sort_values(by=['time'])
-    eventsDf = df.loc[df.parameter == 'event']
+    nodesJobsMap = {}
+    firstEventTime = getFirstEventDatetime(metricList)
 
-    firstEventTime = getFirstEventDatetime(metricsDf)
+    for metric in metricList:
 
-    nodesJobs = {}
-    allJobIds = eventsDf.jobId.unique()
-    for jobId in allJobIds:
+        if metric['parameter'] != 'event':
+            continue
 
-        nodeName = getNodeNameForJob(jobId, jobDescriptionsDf)
+        jobId = metric['jobId']
+        nodeName = jobMap[jobId]['nodeName']
 
-        if nodeName not in nodesJobs:
-            nodesJobs[nodeName] = []
+        if nodeName not in nodesJobsMap:
+            nodesJobsMap[nodeName] = {}
 
-        jobDf = eventsDf.loc[df.jobId == jobId]
-        job = {
-            'id': jobId,
-            'name': jobDf.iloc[0]['name'],
-        }
-        for typex in ['handlerStart', 'jobStart', 'jobEnd', 'handlerEnd']:
-            allOK=True
-            try:
-                stringVal = jobDf.loc[df.value==typex].iloc[0]['time']
-            except IndexError:
-                print("Warning: missing event", typex, "for", jobId, file=sys.stderr)
-                allOK=False
-            else: 
-                dateTime = strToDatetime(stringVal)
-                job[typex] = (dateTime - firstEventTime).total_seconds()
-        if allOK:
-            nodesJobs[nodeName].append(job)
+        if jobId not in nodesJobsMap[nodeName]:
+            nodesJobsMap[nodeName][jobId] = {}
 
-    return nodesJobs
+        eventType = metric['value']
+        eventTime = metric['time']
+        eventTimeDiff = (eventTime - firstEventTime).total_seconds()
+
+        if eventType in nodesJobsMap[nodeName][jobId]:
+
+            # temproarily just ignore newer handlerStarts
+            if (eventType == 'handlerStart') and (eventTimeDiff > nodesJobsMap[nodeName][jobId][eventType]):
+                print('WARNING: inconsistent logs - too many handlerStart occurences.')
+                continue
+
+            raise Exception('There was already "{}" event for job "{}"'.format(eventType, jobId))
+
+        nodesJobsMap[nodeName][jobId][eventType] = eventTimeDiff
+
+    return nodesJobsMap
 
 
 def extractNodesJobsNonoverlap(nodesJobs):
@@ -147,36 +222,76 @@ def extractNodesJobsNonoverlap(nodesJobs):
     return nodesJobsNonoverlap
 
 
-def extractTaskTypes(metricsDf):
-    taskTypes = metricsDf.loc[metricsDf.parameter == 'event'].loc[metricsDf.value == 'handlerStart'].sort_values(by=['time']).name.unique()
-    return taskTypes
+def extractOrderedTaskTypes(metricList):
+    taskTypes = {}
+    for metric in metricList:
+        if metric['parameter'] != 'event':
+            continue
+        name = metric['name']
+        metricTime = metric['time']
+        if name not in taskTypes:
+            taskTypes[name] = metricTime
+        elif taskTypes[name] < metricTime:
+            taskTypes[name] = metricTime
 
-def extractStages(metricsDf, event_start='jobStart', event_end='jobEnd'):
+    orderedTaskTypes = sorted(taskTypes, key=taskTypes.get)
+    return orderedTaskTypes
 
-    eventsDf = metricsDf.loc[metricsDf.parameter == 'event']
-    sortedDf = eventsDf.sort_values(by=['time'])
+def extractStages(metricList, event_start='jobStart', event_end='jobEnd'):
 
-    firstEventTime = getFirstEventDatetime(metricsDf)
+    firstEventTime = getFirstEventDatetime(metricList)
+    stageEvents = defaultdict(list)
+    for metric in metricList:
+
+        if metric['parameter'] != 'event':
+            continue
+
+        metricTimeOffset = (metric['time'] - firstEventTime).total_seconds()
+        eventType = metric['value']
+        if eventType == event_start:
+            stageEvents[metricTimeOffset].append(1)
+        elif eventType == event_end:
+            stageEvents[metricTimeOffset].append(-1)
 
     stages = [{'timeOffset': 0.0, 'activeItems': 0}]
     numActiveItems = 0
-    for _, row in sortedDf.iterrows():
 
-        eventType = row['value']
-        if eventType not in [event_start, event_end]:
-            continue
-
-        if eventType == event_start:
-            numActiveItems += 1
-        elif eventType == event_end:
-            numActiveItems -= 1
-
-        dateTime = strToDatetime(row['time'])
-        timeOffset = (dateTime - firstEventTime).total_seconds()
-
+    for timeOffset, changes in sorted(stageEvents.items()):
+        for change in changes:
+            numActiveItems += change
         stages.append({'timeOffset': timeOffset, 'activeItems': numActiveItems})
-
     return stages
+
+def broken_barh_without_scaling(axis, xranges, yrange, **kwargs):
+
+    # process the unit information
+    if len(xranges):
+        xdata = cbook.safe_first_element(xranges) # ENTERED
+    else:
+        xdata = None
+    if len(yrange):
+        ydata = cbook.safe_first_element(yrange) # ENTERED
+    else:
+        ydata = None
+    axis._process_unit_info(xdata=xdata,
+                            ydata=ydata,
+                            kwargs=kwargs)
+    xranges_conv = []
+    for xr in xranges:
+        if len(xr) != 2:
+            raise ValueError('each range in xrange must be a sequence '
+                                'with two elements (i.e. an Nx2 array)')
+        # convert the absolute values, not the x and dx...
+        x_conv = np.asarray(axis.convert_xunits(xr[0]))
+        x1 = axis._convert_dx(xr[1], xr[0], x_conv, axis.convert_xunits)
+        xranges_conv.append((x_conv, x1))
+
+    yrange_conv = axis.convert_yunits(yrange)
+
+    col = mcoll.BrokenBarHCollection(xranges_conv, yrange_conv, **kwargs)
+    axis.add_collection(col, autolim=False)
+
+    return col
 
 def lightenColor(color, amount=0.5):
     try:
@@ -188,18 +303,18 @@ def lightenColor(color, amount=0.5):
 
 
 def visualizeDir(sourceDir, displayOnly, showActiveJobs):
-    jobDescriptionsPath = os.path.join(sourceDir, 'job_descriptions.jsonl')
-    jobDescriptions = loadJsonlFile(jobDescriptionsPath)
-    jobDescriptionsDf = pd.DataFrame(jobDescriptions)
-
     metricsPath = os.path.join(sourceDir, 'metrics.jsonl')
     metrics = loadJsonlFile(metricsPath)
-    metricsDf = pd.DataFrame(metrics)
 
-    workflowName = getWorkflowName(jobDescriptionsDf)
-    nodesJobs = extractNodesJobs(metricsDf, jobDescriptionsDf)
+    jobDescriptionsPath = os.path.join(sourceDir, 'job_descriptions.jsonl')
+    jobDescriptions = loadJsonlFile(jobDescriptionsPath)
+
+    jobMap = buildJobMap(jobDescriptions)
+    metricList = buildMetricList(metrics)
+    workflowName = getWorkflowName(jobDescriptions)
+    nodesJobs = extractNodesJobs(metricList, jobMap)
     nodesJobsNO = extractNodesJobsNonoverlap(nodesJobs)
-    taskTypes = extractTaskTypes(metricsDf)
+    taskTypes = extractOrderedTaskTypes(metricList)
 
     # Prepare axis data
     rowOffset = 30
@@ -207,10 +322,12 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs):
     y_labels = [(key) for key in natsorted(nodesJobsNO.keys())]
     max_time = 0.0
     for _, jobGroup in nodesJobsNO.items():
-        for job in jobGroup:
+        for jobID in jobGroup:
+            fullNodeName = jobMap[jobID]['nodeName']
+            jobDetails = nodesJobs[fullNodeName][jobID]
             for typex in ['handlerStart', 'jobStart', 'jobEnd', 'handlerEnd']:
-                if job[typex] > max_time:
-                    max_time = job[typex]
+                if jobDetails[typex] > max_time:
+                    max_time = jobDetails[typex]
     max_time = math.ceil(max_time)
 
     # Prepare color scheme
@@ -242,7 +359,10 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs):
     usedLabels = set()
     for i, nodeKey in enumerate(natsorted(nodesJobsNO)):
         jobGroup = nodesJobsNO[nodeKey]
-        for job in jobGroup:
+        for jobID in jobGroup:
+            job = jobMap[jobID]
+            fullNodeName =  job['nodeName']
+            jobDetails = nodesJobs[fullNodeName][jobID]
             cColor = colorsForTaskTypes[job['name']]
             cLabel = job['name']
             # prevent duplicated tasks at legend
@@ -250,13 +370,14 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs):
                 cLabel = ""
             else:
                 usedLabels.add(job['name'])
-            gnt.broken_barh([(job['jobStart'], job['jobEnd']-job['jobStart'])], (rowOffset*(i+1)-8, 16), color=cColor, label=cLabel)
-            gnt.broken_barh([(job['handlerStart'], job['handlerEnd']-job['handlerStart'])], (rowOffset*(i+1)-2, 4), color=lightenColor(cColor,1.3))
+
+            broken_barh_without_scaling(gnt, [(jobDetails['jobStart'], jobDetails['jobEnd']-jobDetails['jobStart'])], (rowOffset*(i+1)-8, 16), color=cColor, label=cLabel)
+            broken_barh_without_scaling(gnt, [(jobDetails['handlerStart'], jobDetails['handlerEnd']-jobDetails['handlerStart'])], (rowOffset*(i+1)-2, 4), color=lightenColor(cColor,1.3))
 
     # Draw legend
     handles, labels = gnt.get_legend_handles_labels()
     lOrders = []
-    for taskType in list(taskTypes):
+    for taskType in taskTypes:
         order = labels.index(taskType)
         lOrders.append(order)
     gnt.legend([handles[idx] for idx in lOrders],[labels[idx] for idx in lOrders], loc="best")
@@ -270,7 +391,7 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs):
         gnt2.set_ylabel('Number of jobs')
         gnt2.grid(True)
 
-        stages = extractStages(metricsDf)
+        stages = extractStages(metricList)
         stages_x = []
         stages_y = []
         for stage in stages:
@@ -284,7 +405,7 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs):
         #xnew = np.linspace(0, max_time, len(stages)*100)
         #ynew = f(xnew)
         #plt.plot(xnew, ynew, label='approximation ({}-degree)'.format(DEG), ls='--', color='red')
-    
+
         gnt2.legend(loc="best")
 
     ### COMMON
@@ -292,8 +413,8 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs):
     if displayOnly is True:
         plt.show()
     else:
-        wfSize = getWorkflowSize(jobDescriptionsDf)
-        wfVersion = getWorkflowVersion(jobDescriptionsDf)
+        wfSize = getWorkflowSize(jobDescriptions)
+        wfVersion = getWorkflowVersion(jobDescriptions)
         filename = '{}-{}-{}.png'.format(workflowName, wfSize, wfVersion)
         plt.savefig(filename)
         print('Chart saved to {}'.format(filename))
