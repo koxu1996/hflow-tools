@@ -84,6 +84,9 @@ def splitJobsIntoDisjointGroups(jobs):
                 unplacedJob = jobsAtTime[j]
                 if (currentEnd is None) or (timeStart > currentEnd):
                     # print(unplacedJob['handlerStart'], unplacedJob['handlerEnd'])
+                    #if 'handlerEnd' not in unplacedJob:
+                    #    print('WTF')
+                    #    print(unplacedJob)
                     currentGroup.append(unplacedJob['jobId'])
                     currentEnd = unplacedJob['handlerEnd']
                     del jobsAtTime[j]
@@ -387,7 +390,7 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs, plotFullNodesNames):
             else:
                 usedLabels.add(job['name'])
 
-            broken_barh_without_scaling(gnt, [(jobDetails['jobStart'], jobDetails['jobEnd']-jobDetails['jobStart'])], ((rowHalfHeight+rowFullHeight*i)-8, 16), color=cColor, label=cLabel)
+            broken_barh_without_scaling(gnt, [(jobDetails['jobStart'], jobDetails['jobEnd']-jobDetails['jobStart'])], ((rowHalfHeight+rowFullHeight*i)-8, 16), color=cColor, label=cLabel, edgecolor="black")
             broken_barh_without_scaling(gnt, [(jobDetails['handlerStart'], jobDetails['handlerEnd']-jobDetails['handlerStart'])], ((rowHalfHeight+rowFullHeight*i)-2, 4), color=lightenColor(cColor,1.3))
 
     # Draw legend
