@@ -317,8 +317,9 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs, plotFullNodesNames):
     taskTypes = extractOrderedTaskTypes(metricList)
 
     # Prepare axis data
-    rowOffset = 30
-    y_ticks = range(rowOffset, (len(nodesJobsNO)+1)*rowOffset, rowOffset)
+    rowHalfHeight = 15
+    rowFullHeight = rowHalfHeight * 2
+    y_ticks = range(rowHalfHeight, (len(nodesJobsNO)+1)*rowFullHeight, rowFullHeight)
     y_labels = [(key) for key in natsorted(nodesJobsNO.keys())]
     if plotFullNodesNames is False:
         y_labels = map(lambda label: label.rsplit('-', 1)[1], y_labels)
@@ -345,7 +346,20 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs, plotFullNodesNames):
         plt.suptitle(workflowName)
     else:
         fig, gnt = plt.subplots()
-        plt.title(workflowName)
+        plt.suptitle(workflowName)
+
+    # Plot background color for even lanes
+    lastKnownNode = None
+    secondColorEnabled = False
+    for i, nodeKey in enumerate(natsorted(nodesJobsNO)): # same order as in plot
+        jobGroup = nodesJobsNO[nodeKey]
+        firstJobID = jobGroup[0]
+        fullNodeName = jobMap[firstJobID]['nodeName']
+        if fullNodeName != lastKnownNode:
+            lastKnownNode = fullNodeName
+            secondColorEnabled = not secondColorEnabled
+        if secondColorEnabled:
+            gnt.axhspan(rowFullHeight*i, rowFullHeight*(i+1), facecolor='grey', alpha=0.2)
 
     ### SUBPLOT 1
 
@@ -373,8 +387,8 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs, plotFullNodesNames):
             else:
                 usedLabels.add(job['name'])
 
-            broken_barh_without_scaling(gnt, [(jobDetails['jobStart'], jobDetails['jobEnd']-jobDetails['jobStart'])], (rowOffset*(i+1)-8, 16), color=cColor, label=cLabel)
-            broken_barh_without_scaling(gnt, [(jobDetails['handlerStart'], jobDetails['handlerEnd']-jobDetails['handlerStart'])], (rowOffset*(i+1)-2, 4), color=lightenColor(cColor,1.3))
+            broken_barh_without_scaling(gnt, [(jobDetails['jobStart'], jobDetails['jobEnd']-jobDetails['jobStart'])], ((rowHalfHeight+rowFullHeight*i)-8, 16), color=cColor, label=cLabel)
+            broken_barh_without_scaling(gnt, [(jobDetails['handlerStart'], jobDetails['handlerEnd']-jobDetails['handlerStart'])], ((rowHalfHeight+rowFullHeight*i)-2, 4), color=lightenColor(cColor,1.3))
 
     # Draw legend
     handles, labels = gnt.get_legend_handles_labels()
@@ -382,7 +396,8 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs, plotFullNodesNames):
     for taskType in taskTypes:
         order = labels.index(taskType)
         lOrders.append(order)
-    gnt.legend([handles[idx] for idx in lOrders],[labels[idx] for idx in lOrders], loc="best")
+    gnt.legend([handles[idx] for idx in lOrders],[labels[idx] for idx in lOrders], loc='upper center', bbox_to_anchor=(0.5, 1.05),
+          ncol=3, fancybox=True, shadow=True)
 
     ### SUBPLOT 2
 
@@ -435,4 +450,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
