@@ -10,13 +10,14 @@ var fs       = require('fs'),
 var doc = "\
 hflow-dot: converts HyperFlow workflow.json to graphviz dot format\n\
 Usage:\n\
-  hflow-dot [-p] [--full] [--png] <workflow-json-file-path>\n\
+  hflow-dot [-p] [--full] [--png] [--nolabels] <workflow-json-file-path>\n\
   hflow-dot -h|--help\n\
   \
 Options:\n\
   -h --help   Prints this\n\
   --png       Generate png\n\
   --full      Generate full graph (with input and output nodes)\n\
+  --nolabels  Do not add node names\n\
   -p          Generates graph according to paritioning info";
 
 var opts = docopt(doc);
@@ -24,6 +25,7 @@ var opts = docopt(doc);
 var partitioning = opts['-p'];
 var png = opts['--png'];
 var full = opts['--full'];
+var nolabels = opts['--nolabels'];
 
 var file = opts['<workflow-json-file-path>'];
 
@@ -120,7 +122,7 @@ if (full) { // generate full graph
       let parNum = processes[procId].config.executor.partition-1;
       n.set('color', colors[parNum]);
     } else {
-      n.set('label', name);
+      n.set('label', nolabels ? '': name);
       n.set('color', colors[procNames[name]]);
     }
     // special storage node
