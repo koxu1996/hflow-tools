@@ -302,7 +302,7 @@ def lightenColor(color, amount=0.5):
     return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
 
 
-def visualizeDir(sourceDir, displayOnly, showActiveJobs):
+def visualizeDir(sourceDir, displayOnly, showActiveJobs, plotFullNodesNames):
     metricsPath = os.path.join(sourceDir, 'metrics.jsonl')
     metrics = loadJsonlFile(metricsPath)
 
@@ -317,9 +317,12 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs):
     taskTypes = extractOrderedTaskTypes(metricList)
 
     # Prepare axis data
-    rowOffset = 30
-    y_ticks = range(rowOffset, (len(nodesJobsNO)+1)*rowOffset, rowOffset)
+    rowHalfHeight = 15
+    rowFullHeight = rowHalfHeight * 2
+    y_ticks = range(rowHalfHeight, (len(nodesJobsNO)+1)*rowFullHeight, rowFullHeight)
     y_labels = [(key) for key in natsorted(nodesJobsNO.keys())]
+    if plotFullNodesNames is False:
+        y_labels = map(lambda label: label.rsplit('-', 1)[1], y_labels)
     max_time = 0.0
     for _, jobGroup in nodesJobsNO.items():
         for jobID in jobGroup:
@@ -343,7 +346,20 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs):
         plt.suptitle(workflowName)
     else:
         fig, gnt = plt.subplots()
-        plt.title(workflowName)
+        plt.suptitle(workflowName)
+
+    # Plot background color for even lanes
+    lastKnownNode = None
+    secondColorEnabled = False
+    for i, nodeKey in enumerate(natsorted(nodesJobsNO)): # same order as in plot
+        jobGroup = nodesJobsNO[nodeKey]
+        firstJobID = jobGroup[0]
+        fullNodeName = jobMap[firstJobID]['nodeName']
+        if fullNodeName != lastKnownNode:
+            lastKnownNode = fullNodeName
+            secondColorEnabled = not secondColorEnabled
+        if secondColorEnabled:
+            gnt.axhspan(rowFullHeight*i, rowFullHeight*(i+1), facecolor='grey', alpha=0.2)
 
     ### SUBPLOT 1
 
@@ -371,8 +387,8 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs):
             else:
                 usedLabels.add(job['name'])
 
-            broken_barh_without_scaling(gnt, [(jobDetails['jobStart'], jobDetails['jobEnd']-jobDetails['jobStart'])], (rowOffset*(i+1)-8, 16), color=cColor, label=cLabel)
-            broken_barh_without_scaling(gnt, [(jobDetails['handlerStart'], jobDetails['handlerEnd']-jobDetails['handlerStart'])], (rowOffset*(i+1)-2, 4), color=lightenColor(cColor,1.3))
+            broken_barh_without_scaling(gnt, [(jobDetails['jobStart'], jobDetails['jobEnd']-jobDetails['jobStart'])], ((rowHalfHeight+rowFullHeight*i)-8, 16), color=cColor, label=cLabel)
+            broken_barh_without_scaling(gnt, [(jobDetails['handlerStart'], jobDetails['handlerEnd']-jobDetails['handlerStart'])], ((rowHalfHeight+rowFullHeight*i)-2, 4), color=lightenColor(cColor,1.3))
 
     # Draw legend
     handles, labels = gnt.get_legend_handles_labels()
@@ -380,7 +396,8 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs):
     for taskType in taskTypes:
         order = labels.index(taskType)
         lOrders.append(order)
-    gnt.legend([handles[idx] for idx in lOrders],[labels[idx] for idx in lOrders], loc="best")
+    gnt.legend([handles[idx] for idx in lOrders],[labels[idx] for idx in lOrders], loc='upper center', bbox_to_anchor=(0.5, 1.05),
+          ncol=3, fancybox=True, shadow=True)
 
     ### SUBPLOT 2
 
@@ -426,10 +443,10 @@ def main():
     parser.add_argument('-s', '--source', type=str, required=True, help='Directory with parsed logs')
     parser.add_argument('-d', '--show', action='store_true', default=False, help='Display plot instead of saving to file')
     parser.add_argument('-a', '--show-active-jobs', action='store_true', default=False, help='Display the number of active jobs subplot')
+    parser.add_argument('-f', '--full-nodes-names', action='store_true', default=False, help='Display full nodes\' names')
     args = parser.parse_args()
-    visualizeDir(args.source, args.show, args.show_active_jobs)
+    visualizeDir(args.source, args.show, args.show_active_jobs, args.full_nodes_names)
 
 
 if __name__ == '__main__':
     main()
-
