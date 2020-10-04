@@ -27,6 +27,9 @@ def buildJobMap(jobDescriptions):
     jobMap = {}
     for row in jobDescriptions:
         jobId = row['jobId']
+        handlerId = row['handlerId']
+        if handlerId:
+            jobId = jobId + "@" + handlerId
         if jobId in jobMap:
             raise Exception('Duplicated description for job {}'.format(jobId))
         jobMap[jobId] = row
@@ -186,6 +189,9 @@ def extractNodesJobs(metricList, jobMap):
             continue
 
         jobId = metric['jobId']
+        handlerId = metric['handlerId']
+        if handlerId:
+            jobId = jobId + "@" + handlerId
         nodeName = jobMap[jobId]['nodeName']
 
         if nodeName not in nodesJobsMap:
@@ -332,6 +338,7 @@ def visualizeDir(sourceDir, displayOnly, showActiveJobs, plotFullNodesNames):
             fullNodeName = jobMap[jobID]['nodeName']
             jobDetails = nodesJobs[fullNodeName][jobID]
             for typex in ['handlerStart', 'jobStart', 'jobEnd', 'handlerEnd']:
+                # not sure what in case of eviction/failure, when there is no jobEnd ... :/
                 if jobDetails[typex] > max_time:
                     max_time = jobDetails[typex]
     max_time = math.ceil(max_time)
