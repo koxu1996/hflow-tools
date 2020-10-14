@@ -33,10 +33,10 @@ var createGraph = function(wfjson) {
   });
   processes.forEach(function(proc, idx) {
     (proc.ins||[]).forEach(function(insig) {
-      wfgraph.setEdge("s:"+insig, "p:"+(idx+1));
+      wfgraph.setEdge("s:"+(insig+1), "p:"+(idx+1));
     });
     (proc.outs||[]).forEach(function(outsig) {
-      wfgraph.setEdge("p:"+(idx+1), "s:"+outsig)
+      wfgraph.setEdge("p:"+(idx+1), "s:"+(outsig+1))
     });
   });
   
